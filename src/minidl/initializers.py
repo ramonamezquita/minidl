@@ -12,5 +12,5 @@ class RandomUniform:
         self.min_val = min_val
         self.max_val = max_val
 
-    def initialize_array(self, shape) -> np.ndarray:
-        return np.random.rand(shape)
+    def initialize_array(self, *shape) -> np.ndarray:
+        return np.random.rand(*shape)

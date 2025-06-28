@@ -5,14 +5,14 @@ from .initializers import ArrayInitializer, RandomUniform
 
 class Parameter:
     def __init__(self, *shape, intializer: ArrayInitializer = RandomUniform()):
-        self._values = intializer.initialize_array(shape)
-        self._gradient = None
+        self.value = intializer.initialize_array(*shape)
+        self.gradient = None
 
     def set_gradient(self, gradient: np.ndarray) -> None:
-        self._gradient = gradient
+        self.gradient = gradient
 
-    def set(self, values: np.ndarray) -> None:
-        self._values = values
+    def set(self, value: np.ndarray) -> None:
+        self.value = value
 
 
 class Layer:
@@ -58,8 +58,17 @@ class Layer:
     def register_parameter(self, name: str, value: np.ndarray) -> None:
         self._parameters[name] = value
 
-    def parameters(self) -> dict:
+    @property
+    def named_parameters(self) -> dict[str, Parameter]:
         return self._parameters
+
+    @property
+    def parameters(self) -> list[Parameter]:
+        return list(self._parameters.values())
+    
+    @property
+    def flat_parameters(self) -> np.ndarray:
+        return np.ravel(np.array(self.parameters))
 
 
 class Linear(Layer):
@@ -83,11 +92,11 @@ class Linear(Layer):
         -------
         output: shape=(n_samples, features_out)
         """
-        self._J_x = self.W
+        self._J_x = self.W.value
         self._J_w = x
-        return x @ self.W + self.b
+        return x @ self.W.value + self.b.value
 
-    def backward(self, gradient: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    def backward(self, gradient: np.ndarray) -> np.ndarray:
         """Backward pass.
 
         Parameters
@@ -96,8 +105,9 @@ class Linear(Layer):
             The upstream gradient. That is, the gradient of the function being
             differentiated wrt to the `forward` output.
         """
-        dx = self._J_x.T @ gradient
-        dW = self._J_w.T @ gradient
+        dW = self._J_w.T @ gradient  # (features_in, n_samples) x (n_samples, features_out)
+        dx = self._J_x @ gradient.T  # (features_in, features_out) x (features_out, n_samples)
+
         db = np.sum(gradient, axis=0, keepdims=True)
 
         self.W.set_gradient(dW)
